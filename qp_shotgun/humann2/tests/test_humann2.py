@@ -11,12 +11,12 @@ from os import close, remove
 from shutil import copyfile, rmtree
 from tempfile import mkstemp, mkdtemp
 from json import dumps
-from os.path import exists, isdir, basename
+from os.path import exists, isdir, basename, join
 
 from qiita_client.testing import PluginTestCase
 
 
-from qp_shotgun.humann2 import plugin
+from qp_shotgun import plugin
 from qp_shotgun.humann2.humann2 import (
     humann2, generate_humann2_analysis_commands)
 
@@ -25,11 +25,11 @@ class Humann2Tests(PluginTestCase):
     def setUp(self):
         plugin("https://localhost:21174", 'register', 'ignored')
         self.params = {
-            'nucleotide-database': 'chocophlan', 'protein-database': 'uniref',
+            'nucleotide-database': 'default', 'protein-database': 'default',
             'bypass-prescreen': False, 'bypass-nucleotide-index': False,
             'bypass-translated-search': False,
             'bypass-nucleotide-search': False,
-            'annotation-gene-index': 8, 'evalue': 1.0, 'search-mode': '',
+            'annotation-gene-index': 8, 'evalue': 1.0,
             'metaphlan-options': '-t rel_ab', 'log-level': 'DEBUG',
             'remove-temp-output': False, 'threads': 1,
             'prescreen-threshold': 0.01, 'identity-threshold': 50.0,
@@ -39,7 +39,8 @@ class Humann2Tests(PluginTestCase):
             'xipe': 'off', 'minpath': 'on', 'pick-frames': 'off',
             'gap-fill': 'off', 'output-format': 'biom',
             'output-max-decimals': 10, 'remove-stratified-output': False,
-            'input-format': '', 'pathways': 'metacyc', 'memory-use': 'minimum'}
+            'pathways': 'metacyc',
+            'memory-use': 'minimum', 'remove-column-description-output': True}
         self._clean_up_files = []
 
     def tearDown(self):
@@ -77,8 +78,11 @@ class Humann2Tests(PluginTestCase):
             f.write(MAPPING_FILE)
         self._clean_up_files.append(fp)
 
+        out_dir = mkdtemp()
+        self._clean_up_files.append(out_dir)
+
         exp = [
-            'humann2 --input "fastq/s1.fastq" --output "output/s1" '
+            'humann2 --input "fastq/s1.fastq" --output "%s/s1" '
             '--output-basename "SKB8.640193" --output-format biom '
             '--gap-fill "off" '
             '--identity-threshold "50.0" --output-format "biom" '
@@ -87,12 +91,12 @@ class Humann2Tests(PluginTestCase):
             '--prescreen-threshold "0.01" '
             '--translated-subject-coverage-threshold "50.0" --evalue "1.0" '
             '--minpath "on" --output-max-decimals "10" '
-            '--nucleotide-database "chocophlan" --memory-use "minimum" '
+            '--memory-use "minimum" '
             '--xipe "off" --annotation-gene-index "8" '
-            '--protein-database "uniref" --threads "1" --pathways "metacyc" '
+            '--threads "1" --pathways "metacyc" '
             '--pick-frames "off" --translated-alignment "diamond" '
-            '--log-level "DEBUG"',
-            'humann2 --input "fastq/s2.fastq.gz" --output "output/s2" '
+            '--remove-column-description-output --log-level "DEBUG"' % out_dir,
+            'humann2 --input "fastq/s2.fastq.gz" --output "%s/s2" '
             '--output-basename "SKD8.640184" --output-format biom '
             '--gap-fill "off" '
             '--identity-threshold "50.0" --output-format "biom" '
@@ -101,12 +105,12 @@ class Humann2Tests(PluginTestCase):
             '--prescreen-threshold "0.01" '
             '--translated-subject-coverage-threshold "50.0" --evalue "1.0" '
             '--minpath "on" --output-max-decimals "10" '
-            '--nucleotide-database "chocophlan" --memory-use "minimum" '
+            '--memory-use "minimum" '
             '--xipe "off" --annotation-gene-index "8" '
-            '--protein-database "uniref" --threads "1" --pathways "metacyc" '
+            '--threads "1" --pathways "metacyc" '
             '--pick-frames "off" --translated-alignment "diamond" '
-            '--log-level "DEBUG"',
-            'humann2 --input "fastq/s3.fastq" --output "output/s3" '
+            '--remove-column-description-output --log-level "DEBUG"' % out_dir,
+            'humann2 --input "fastq/s3.fastq" --output "%s/s3" '
             '--output-basename "SKB7.640196" --output-format biom '
             '--gap-fill "off" '
             '--identity-threshold "50.0" --output-format "biom" '
@@ -115,14 +119,14 @@ class Humann2Tests(PluginTestCase):
             '--prescreen-threshold "0.01" '
             '--translated-subject-coverage-threshold "50.0" --evalue "1.0" '
             '--minpath "on" --output-max-decimals "10" '
-            '--nucleotide-database "chocophlan" --memory-use "minimum" '
+            '--memory-use "minimum" '
             '--xipe "off" --annotation-gene-index "8" '
-            '--protein-database "uniref" --threads "1" --pathways "metacyc" '
+            '--threads "1" --pathways "metacyc" '
             '--pick-frames "off" --translated-alignment "diamond" '
-            '--log-level "DEBUG"']
+            '--remove-column-description-output --log-level "DEBUG"' % out_dir]
         obs = generate_humann2_analysis_commands(
             ['fastq/s1.fastq', 'fastq/s2.fastq.gz', 'fastq/s3.fastq'], [],
-            fp, 'output', self.params)
+            fp, out_dir, self.params)
         self.assertEqual(obs, exp)
 
     def test_generate_humann2_analysis_commands_forward_reverse(self):
@@ -132,8 +136,11 @@ class Humann2Tests(PluginTestCase):
             f.write(MAPPING_FILE)
         self._clean_up_files.append(fp)
 
+        out_dir = mkdtemp()
+        self._clean_up_files.append(out_dir)
+
         exp = [
-            'humann2 --input "fastq/s1.fastq" --output "output/s1" '
+            'humann2 --input "fastq/s1.fastq" --output "%s/s1" '
             '--output-basename "SKB8.640193" --output-format biom '
             '--gap-fill "off" '
             '--identity-threshold "50.0" --output-format "biom" '
@@ -142,12 +149,12 @@ class Humann2Tests(PluginTestCase):
             '--prescreen-threshold "0.01" '
             '--translated-subject-coverage-threshold "50.0" --evalue "1.0" '
             '--minpath "on" --output-max-decimals "10" '
-            '--nucleotide-database "chocophlan" --memory-use "minimum" '
+            '--memory-use "minimum" '
             '--xipe "off" --annotation-gene-index "8" '
-            '--protein-database "uniref" --threads "1" --pathways "metacyc" '
+            '--threads "1" --pathways "metacyc" '
             '--pick-frames "off" --translated-alignment "diamond" '
-            '--log-level "DEBUG"',
-            'humann2 --input "fastq/s1.R2.fastq" --output "output/s1.R2" '
+            '--remove-column-description-output --log-level "DEBUG"' % out_dir,
+            'humann2 --input "fastq/s1.R2.fastq" --output "%s/s1.R2" '
             '--output-basename "SKB8.640193" --output-format biom '
             '--gap-fill "off" '
             '--identity-threshold "50.0" --output-format "biom" '
@@ -156,12 +163,13 @@ class Humann2Tests(PluginTestCase):
             '--prescreen-threshold "0.01" '
             '--translated-subject-coverage-threshold "50.0" --evalue "1.0" '
             '--minpath "on" --output-max-decimals "10" '
-            '--nucleotide-database "chocophlan" --memory-use "minimum" '
+            '--memory-use "minimum" '
             '--xipe "off" --annotation-gene-index "8" '
-            '--protein-database "uniref" --threads "1" '
+            '--threads "1" '
             '--pathways "metacyc" --pick-frames "off" '
-            '--translated-alignment "diamond" --log-level "DEBUG"',
-            'humann2 --input "fastq/s2.fastq.gz" --output "output/s2" '
+            '--translated-alignment "diamond" '
+            '--remove-column-description-output --log-level "DEBUG"' % out_dir,
+            'humann2 --input "fastq/s2.fastq.gz" --output "%s/s2" '
             '--output-basename "SKD8.640184" --output-format biom '
             '--gap-fill "off" '
             '--identity-threshold "50.0" --output-format "biom" '
@@ -170,11 +178,12 @@ class Humann2Tests(PluginTestCase):
             '--prescreen-threshold "0.01" '
             '--translated-subject-coverage-threshold "50.0" --evalue "1.0" '
             '--minpath "on" --output-max-decimals "10" '
-            '--nucleotide-database "chocophlan" --memory-use "minimum" '
-            '--xipe "off" --annotation-gene-index "8" --protein-database '
-            '"uniref" --threads "1" --pathways "metacyc" --pick-frames "off" '
-            '--translated-alignment "diamond" --log-level "DEBUG"',
-            'humann2 --input "fastq/s2.R2.fastq.gz" --output "output/s2.R2" '
+            '--memory-use "minimum" '
+            '--xipe "off" --annotation-gene-index "8" '
+            '--threads "1" --pathways "metacyc" --pick-frames "off" '
+            '--translated-alignment "diamond" '
+            '--remove-column-description-output --log-level "DEBUG"' % out_dir,
+            'humann2 --input "fastq/s2.R2.fastq.gz" --output "%s/s2.R2" '
             '--output-basename "SKD8.640184" --output-format biom '
             '--gap-fill "off" '
             '--identity-threshold "50.0" --output-format "biom" '
@@ -183,12 +192,12 @@ class Humann2Tests(PluginTestCase):
             '--prescreen-threshold "0.01" '
             '--translated-subject-coverage-threshold "50.0" '
             '--evalue "1.0" --minpath "on" --output-max-decimals "10" '
-            '--nucleotide-database "chocophlan" --memory-use "minimum" '
+            '--memory-use "minimum" '
             '--xipe "off" --annotation-gene-index "8" '
-            '--protein-database "uniref" --threads "1" --pathways "metacyc" '
+            '--threads "1" --pathways "metacyc" '
             '--pick-frames "off" --translated-alignment "diamond" '
-            '--log-level "DEBUG"',
-            'humann2 --input "fastq/s3.fastq" --output "output/s3" '
+            '--remove-column-description-output --log-level "DEBUG"' % out_dir,
+            'humann2 --input "fastq/s3.fastq" --output "%s/s3" '
             '--output-basename "SKB7.640196" --output-format biom '
             '--gap-fill "off" '
             '--identity-threshold "50.0" --output-format "biom" '
@@ -197,12 +206,12 @@ class Humann2Tests(PluginTestCase):
             '--prescreen-threshold "0.01" '
             '--translated-subject-coverage-threshold "50.0" '
             '--evalue "1.0" --minpath "on" --output-max-decimals "10" '
-            '--nucleotide-database "chocophlan" --memory-use "minimum" '
+            '--memory-use "minimum" '
             '--xipe "off" --annotation-gene-index "8" '
-            '--protein-database "uniref" --threads "1" --pathways "metacyc" '
+            '--threads "1" --pathways "metacyc" '
             '--pick-frames "off" --translated-alignment "diamond" '
-            '--log-level "DEBUG"',
-            'humann2 --input "fastq/s3.R2.fastq" --output "output/s3.R2" '
+            '--remove-column-description-output --log-level "DEBUG"' % out_dir,
+            'humann2 --input "fastq/s3.R2.fastq" --output "%s/s3.R2" '
             '--output-basename "SKB7.640196" --output-format biom '
             '--gap-fill "off" '
             '--identity-threshold "50.0" --output-format "biom" '
@@ -211,15 +220,15 @@ class Humann2Tests(PluginTestCase):
             '--prescreen-threshold "0.01" '
             '--translated-subject-coverage-threshold "50.0" --evalue "1.0" '
             '--minpath "on" --output-max-decimals "10" '
-            '--nucleotide-database "chocophlan" --memory-use "minimum" '
+            '--memory-use "minimum" '
             '--xipe "off" --annotation-gene-index "8" '
-            '--protein-database "uniref" --threads "1" --pathways "metacyc" '
+            '--threads "1" --pathways "metacyc" '
             '--pick-frames "off" --translated-alignment "diamond" '
-            '--log-level "DEBUG"']
+            '--remove-column-description-output --log-level "DEBUG"' % out_dir]
         obs = generate_humann2_analysis_commands(
             ['fastq/s1.fastq', 'fastq/s2.fastq.gz', 'fastq/s3.fastq'],
             ['fastq/s1.R2.fastq', 'fastq/s2.R2.fastq.gz', 'fastq/s3.R2.fastq'],
-            fp, 'output', self.params)
+            fp, out_dir, self.params)
         self.assertEqual(obs, exp)
 
     def test_humann2(self):
@@ -261,7 +270,7 @@ class Humann2Tests(PluginTestCase):
         self.params['nucleotide-database'] = ''
         self.params['protein-database'] = ''
         data = {'user': 'demo@microbio.me',
-                'command': dumps(['HUMAnN2', '0.9.1', 'HUMAnN2']),
+                'command': dumps(['qp-shotgun', '0.0.1', 'HUMAnN2 0.9.1']),
                 'status': 'running',
                 'parameters': dumps(self.params)}
         jid = self.qclient.post('/apitest/processing_job/', data=data)['job']
@@ -269,9 +278,31 @@ class Humann2Tests(PluginTestCase):
         out_dir = mkdtemp()
         self._clean_up_files.append(out_dir)
 
-        humann2(self.qclient, jid, self.params, out_dir)
+        success, ainfo, msg = humann2(self.qclient, jid, self.params, out_dir)
 
-        # TODO: test that the files are created properly
+        self.assertEqual("", msg)
+        self.assertTrue(success)
+        # we are expecting 6 artifacts
+        self.assertEqual(12, len(ainfo))
+
+        obs_fps = []
+        for a in ainfo:
+            self.assertEqual("BIOM", a.artifact_type)
+            obs_fps.append(a.files)
+        exp_fps = [
+            [(join(out_dir, 'genefamilies.biom'), 'biom')],
+            [(join(out_dir, 'pathcoverage.biom'), 'biom')],
+            [(join(out_dir, 'pathabundance.biom'), 'biom')],
+            [(join(out_dir, 'genefamilies_cpm.biom'), 'biom')],
+            [(join(out_dir, 'pathcoverage_relab.biom'), 'biom')],
+            [(join(out_dir, 'pathabundance_relab.biom'), 'biom')],
+            [(join(out_dir, 'genefamilies_cpm_stratified.biom'), 'biom')],
+            [(join(out_dir, 'pathcoverage_relab_stratified.biom'), 'biom')],
+            [(join(out_dir, 'pathabundance_relab_stratified.biom'), 'biom')],
+            [(join(out_dir, 'genefamilies_cpm_unstratified.biom'), 'biom')],
+            [(join(out_dir, 'pathcoverage_relab_unstratified.biom'), 'biom')],
+            [(join(out_dir, 'pathabundance_relab_unstratified.biom'), 'biom')]]
+        self.assertItemsEqual(exp_fps, obs_fps)
 
 
 MAPPING_FILE = (

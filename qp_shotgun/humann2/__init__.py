@@ -6,17 +6,11 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 
-from qiita_client import QiitaPlugin, QiitaCommand
+from qiita_client import QiitaCommand
 
 from .humann2 import humann2
 
 __all__ = ['humann2']
-
-
-# Initialize the plugin
-plugin = QiitaPlugin(
-    'HUMAnN2', '0.9.1', 'HUMAnN2 is the next generation of HUMAnN (HMP '
-    'Unified Metabolic Analysis Network)')
 
 # Define the HUMAnN2 command
 req_params = {'input': ('artifact', ['per_sample_FASTQ'])}
@@ -32,15 +26,16 @@ opt_params = {
     # id-mapping
     # pathways-database
     # o-log
-    'nucleotide-database': ['choice:["chocophlan"]', 'chocophlan'],
-    'protein-database': ['choice:["uniref"]', 'uniref'],
+    # input-format
+    # search-mode
+    'nucleotide-database': ['choice:["default"]', 'default'],
+    'protein-database': ['choice:["default"]', 'default'],
     'bypass-prescreen': ['boolean', 'False'],
     'bypass-nucleotide-index': ['boolean', 'False'],
     'bypass-translated-search': ['boolean', 'False'],
     'bypass-nucleotide-search': ['boolean', 'False'],
     'annotation-gene-index': ['integer', '8'],
     'evalue': ['float', '1.0'],
-    'search-mode': ['choice:["", "uniref50", "uniref90"]', ''],
     'metaphlan-options': ['string', '-t rel_ab'],
     'log-level': ['choice:["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]',
                   'DEBUG'],
@@ -59,17 +54,28 @@ opt_params = {
     'output-format': ['choice:["tsv", "biom"]', 'biom'],
     'output-max-decimals': ['integer', '10'],
     'remove-stratified-output': ['boolean', 'False'],
-    'input-format': ['choice:["", "fastq", "fastq.gz", "fasta", "fasta.gz", '
-                     '"sam", "bam", "blastm8", "genetable", "biom"]', ''],
     'pathways': ['choice:["metacyc", "unipathway"]', 'metacyc'],
-    'memory-use': ['choice:["minimum", "maximum"]', 'minimum']}
-outputs = {'per_sample_FASTQ': 'per_sample_FASTQ'}
+    'memory-use': ['choice:["minimum", "maximum"]', 'minimum'],
+    'remove-column-description-output': ['boolean', 'True']}
+outputs = {
+    'Gene family table': 'BIOM',
+    'Path coverage table': 'BIOM',
+    'Path abundance table': 'BIOM',
+    'Gene family CMP table': 'BIOM',
+    'Path coverage RELAB table': 'BIOM',
+    'Path abundance RELAB table': 'BIOM',
+    'Gene family CMP table - stratified': 'BIOM',
+    'Path coverage RELAB table - stratified': 'BIOM',
+    'Path abundance RELAB table - stratified': 'BIOM',
+    'Gene family CMP table - unstratified': 'BIOM',
+    'Path coverage RELAB table - unstratified': 'BIOM',
+    'Path abundance RELAB table - unstratified': 'BIOM'}
 dflt_param_set = {
     'Defaults': {
-        'nucleotide-database': 'chocophlan', 'protein-database': 'uniref',
+        'nucleotide-database': 'default', 'protein-database': 'default',
         'bypass-prescreen': False, 'bypass-nucleotide-index': False,
         'bypass-translated-search': False, 'bypass-nucleotide-search': False,
-        'annotation-gene-index': 8, 'evalue': 1.0, 'search-mode': '',
+        'annotation-gene-index': 8, 'evalue': 1.0,
         'metaphlan-options': '-t rel_ab', 'log-level': 'DEBUG',
         'remove-temp-output': False, 'threads': 1,
         'prescreen-threshold': 0.01, 'identity-threshold': 50.0,
@@ -79,9 +85,8 @@ dflt_param_set = {
         'xipe': 'off', 'minpath': 'on', 'pick-frames': 'off',
         'gap-fill': 'off', 'output-format': 'biom',
         'output-max-decimals': 10, 'remove-stratified-output': False,
-        'input-format': '', 'pathways': 'metacyc', 'memory-use': 'minimum'}
+        'pathways': 'metacyc', 'memory-use': 'minimum'}
 }
 humann2_cmd = QiitaCommand(
-    "HUMAnN2", "Community profiling", humann2, req_params, opt_params,
+    "HUMAnN2 0.9.1", "Community profiling", humann2, req_params, opt_params,
     outputs, dflt_param_set)
-plugin.register_command(humann2_cmd)
